@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: payment-engine-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: payment_engine_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d payment_engine_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - payment-engine-network
+
+  payment-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payment-engine-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_engine_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      WEBHOOK_SECRET: whsec_test_secret_key_123456789
+      ORDER_EXPIRATION_MINUTES: 15
+    networks:
+      - payment-engine-network
+
+networks:
+  payment-engine-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

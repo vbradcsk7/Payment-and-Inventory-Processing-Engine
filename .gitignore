@@ -1,0 +1,56 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbattrs.xml
+/build/
+
+### VS Code ###
+.vscode/
+
+### OS Files ###
+.DS_Store
+Thumbs.db
+
+### Simulator ###
+simulator/__pycache__/
+*.pyc
+
+# Build artifacts
+target/
+build/
+
+# Operating system
+.DS_Store
+
+# IDE
+.idea/
+*.iml
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log

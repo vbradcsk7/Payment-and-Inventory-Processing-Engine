@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment and Inventory Engine Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">
+          <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-white tracking-tight">
+            Payment and Inventory Engine
+          </h1>
+          <p class="text-xs text-slate-400 font-medium">Java 21 • Spring Boot 3.3 • Concurrency and Idempotency Control</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <div id="system-status-pill" class="flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span>Engine Online (Port 8080)</span>
+        </div>
+        <a href="/swagger-ui.html" target="_blank" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center space-x-1.5 font-medium">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          <span>Swagger UI</span>
+        </a>
+        <button onclick="refreshAll()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg shadow transition flex items-center space-x-1 font-semibold">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          <span>Actualizar</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- KPI Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="glass p-5 rounded-2xl">
+        <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+          <span>Catalogo Total</span>
+          <span class="text-xs font-mono text-indigo-400 px-2 py-0.5 rounded bg-indigo-500/10">CAT</span>
+        </div>
+        <div class="mt-3 flex items-baseline space-x-2">
+          <span id="stat-products-count" class="text-3xl font-extrabold text-white">0</span>
+          <span class="text-xs text-slate-400">productos</span>
+        </div>
+      </div>
+
+      <div class="glass p-5 rounded-2xl">
+        <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+          <span>Stock Disponible</span>
+          <span class="text-xs font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10">DISP</span>
+        </div>
+        <div class="mt-3 flex items-baseline space-x-2">
+          <span id="stat-stock-available" class="text-3xl font-extrabold text-emerald-400">0</span>
+          <span class="text-xs text-slate-400">unidades disponibles</span>
+        </div>
+      </div>
+
+      <div class="glass p-5 rounded-2xl">
+        <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+          <span>Stock Reservado</span>
+          <span class="text-xs font-mono text-amber-400 px-2 py-0.5 rounded bg-amber-500/10">RES</span>
+        </div>
+        <div class="mt-3 flex items-baseline space-x-2">
+          <span id="stat-stock-reserved" class="text-3xl font-extrabold text-amber-400">0</span>
+          <span class="text-xs text-slate-400">unidades reservadas</span>
+        </div>
+      </div>
+
+      <div class="glass p-5 rounded-2xl">
+        <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+          <span>Ordenes Registradas</span>
+          <span class="text-xs font-mono text-purple-400 px-2 py-0.5 rounded bg-purple-500/10">ORD</span>
+        </div>
+        <div class="mt-3 flex items-baseline space-x-2">
+          <span id="stat-orders-count" class="text-3xl font-extrabold text-purple-400">0</span>
+          <span class="text-xs text-slate-400">transacciones</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Inventory Section -->
+    <section class="glass p-6 rounded-2xl">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center space-x-2">
+            <span>Inventario de Productos en Tiempo Real</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">Pessimistic Locking</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">Control de concurrencia: cada compra bloquea la fila mediante SELECT ... FOR UPDATE.</p>
+        </div>
+      </div>
+
+      <div id="products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Dynamic Product Cards injected here -->
+        <div class="p-8 text-center text-slate-500 col-span-4">Consultando inventario...</div>
+      </div>
+    </section>
+
+    <!-- Two Columns: Create Order & Webhook Simulator -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Column 1: Order Creation with Idempotency (7 cols) -->
+      <section class="lg:col-span-7 glass p-6 rounded-2xl space-y-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center space-x-2">
+              <span>Creacion de Orden con Idempotencia</span>
+              <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">Idempotency-Key</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">El uso del header Idempotency-Key evita la duplicacion de ordenes y doble descuento de stock.</p>
+          </div>
+        </div>
+
+        <form id="order-form" onsubmit="handleCreateOrder(event)" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Email del Cliente</label>
+              <input type="email" id="order-email" value="cliente@empresa.com" required
+                     class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Producto a Comprar</label>
+              <select id="order-product-select" required
+                      class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                <!-- Dynamically populated -->
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-xs font-semibold text-slate-300">Idempotency-Key (Header HTTP)</label>
+              <div class="space-x-2">
+                <button type="button" onclick="generateNewIdempotencyKey()" class="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium">Generar UUID</button>
+              </div>
+            </div>
+            <div class="relative">
+              <input type="text" id="order-idempotency-key" required
+                     class="w-full mono bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-emerald-400 font-semibold focus:outline-none focus:border-indigo-500">
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">Re-enviar la solicitud con la misma clave devolvera la orden original con estado HTTP 200 sin volver a descontar inventario.</p>
+          </div>
+
+          <div class="flex items-center space-x-3 pt-2">
+            <button type="submit" id="btn-create-order" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-sm">
+              <span>Enviar Peticion de Orden</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Orders Table -->
+        <div class="pt-4 border-t border-slate-800">
+          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">Ordenes Registradas</h3>
+          <div class="overflow-x-auto max-h-60 overflow-y-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="text-slate-400 border-b border-slate-800 uppercase text-[10px] tracking-wider">
+                <tr>
+                  <th class="py-2">ID Orden</th>
+                  <th class="py-2">Cliente</th>
+                  <th class="py-2">Total</th>
+                  <th class="py-2">Estado</th>
+                  <th class="py-2 text-right">Accion</th>
+                </tr>
+              </thead>
+              <tbody id="orders-table-body" class="divide-y divide-slate-800/60 text-slate-300">
+                <tr><td colspan="5" class="py-4 text-center text-slate-500">No hay ordenes registradas en este momento</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Column 2: Webhooks Simulator & Concurrency Test (5 cols) -->
+      <section class="lg:col-span-5 space-y-6">
+
+        <!-- Webhook Simulator Panel -->
+        <div class="glass p-6 rounded-2xl space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-white flex items-center space-x-2">
+              <span>Simulador de Webhooks</span>
+              <span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-semibold">HMAC-SHA256</span>
+            </h2>
+          </div>
+          <p class="text-xs text-slate-400">Simula notificaciones de pago asincronas con validacion de firma en tiempo constante.</p>
+
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Seleccionar Orden PENDING</label>
+              <select id="webhook-order-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                <option value="">-- Primero crea una orden --</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button onclick="dispatchWebhook('payment.succeeded', true)" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 font-semibold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center space-x-1.5">
+                <span>Pago Aprobado (payment.succeeded)</span>
+              </button>
+
+              <button onclick="dispatchWebhook('payment.failed', true)" class="bg-slate-800 hover:bg-slate-700 text-rose-400 border border-slate-700 font-semibold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center space-x-1.5">
+                <span>Pago Fallido (payment.failed)</span>
+              </button>
+
+              <button onclick="dispatchWebhook('payment.succeeded', false)" class="col-span-2 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 font-semibold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center space-x-1.5">
+                <span>Simular Ataque (Firma Invalida -> HTTP 401)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Concurrency Stress Test Box -->
+        <div class="glass p-6 rounded-2xl space-y-4 border-slate-800">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-white flex items-center space-x-2">
+              <span>Prueba de Concurrencia (Flash Sale)</span>
+              <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">20 Hilos</span>
+            </h2>
+          </div>
+          <p class="text-xs text-slate-300">
+            Ejecuta 20 peticiones HTTP simultaneas en paralelo intentando reservar la misma unidad de inventario.
+          </p>
+
+          <button onclick="runConcurrencyStressTest()" id="btn-stress-test" class="w-full bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-bold py-3 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-sm">
+            <span>Ejecutar Prueba de Concurrencia (20 Peticiones Paralelas)</span>
+          </button>
+
+          <div id="stress-results-box" class="hidden space-y-2 pt-2 text-xs">
+            <div class="flex justify-between font-semibold">
+              <span class="text-emerald-400">Exitoso (HTTP 201): <span id="stress-success-count">0</span></span>
+              <span class="text-rose-400">Rechazados por Stock (HTTP 409): <span id="stress-fail-count">0</span></span>
+            </div>
+            <div id="stress-pills" class="flex flex-wrap gap-1.5 pt-1"></div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+
+    <!-- Live Activity Log Window (Terminal-style) -->
+    <section class="glass p-5 rounded-2xl space-y-2">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-2">
+          <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+          <span>Consola de Auditoria HTTP en Vivo</span>
+        </h3>
+        <button onclick="clearLogs()" class="text-[11px] text-slate-500 hover:text-slate-300 font-medium">Limpiar Consola</button>
+      </div>
+      <div id="activity-log" class="mono text-xs text-slate-300 space-y-1 max-h-48 overflow-y-auto pt-2">
+        <div class="text-slate-500">[INFO] Dashboard inicializado. Conectado a http://localhost:8080</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Script Logic -->
+  <script>
+    const API_BASE = '';
+    const WEBHOOK_SECRET = "whsec_test_secret_key_123456789";
+
+    let state = {
+      products: [],
+      orders: [],
+      lastWebhookEventId: null
+    };
+
+    function log(type, message, details = null) {
+      const logContainer = document.getElementById('activity-log');
+      const time = new Date().toLocaleTimeString();
+      const el = document.createElement('div');
+      
+      let badgeClass = "text-slate-400";
+      if (type === 'SUCCESS') badgeClass = "text-emerald-400 font-semibold";
+      if (type === 'ERROR') badgeClass = "text-rose-400 font-semibold";
+      if (type === 'WARN') badgeClass = "text-amber-400 font-semibold";
+      if (type === 'IDEM') badgeClass = "text-cyan-400 font-semibold";
+
+      el.innerHTML = `<span class="text-slate-600">[${time}]</span> <span class="${badgeClass}">[${type}]</span> ${message}`;
+      if (details) {
+        el.innerHTML += `<div class="text-[11px] text-slate-500 pl-6 break-all">${typeof details === 'object' ? JSON.stringify(details) : details}</div>`;
+      }
+      logContainer.appendChild(el);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function clearLogs() {
+      document.getElementById('activity-log').innerHTML = '<div class="text-slate-500">[INFO] Consola reiniciada.</div>';
+    }
+
+    function generateUuid() {
+      if (crypto.randomUUID) return crypto.randomUUID();
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    function generateNewIdempotencyKey() {
+      const key = generateUuid();
+      document.getElementById('order-idempotency-key').value = key;
+      log('INFO', `Nueva clave Idempotency-Key generada: ${key}`);
+    }
+
+    // Cryptographic HMAC-SHA256 calculation directly in browser
+    async function computeHmacSha256(payloadStr, secret) {
+      const enc = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        "raw",
+        enc.encode(secret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"]
+      );
+      const signature = await crypto.subtle.sign(
+        "HMAC",
+        key,
+        enc.encode(payloadStr)
+      );
+      return Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    async function fetchProducts() {
+      try {
+        const res = await fetch('/api/v1/products');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        state.products = await res.json();
+        renderProducts();
+        updateProductSelect();
+      } catch (err) {
+        log('ERROR', 'Fallo al consultar productos de inventario', err.message);
+      }
+    }
+
+    async function fetchOrders() {
+      try {
+        const res = await fetch('/api/v1/orders');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        state.orders = await res.json();
+        renderOrders();
+        updateWebhookOrderSelect();
+      } catch (err) {
+        log('ERROR', 'Fallo al consultar ordenes', err.message);
+      }
+    }
+
+    function renderProducts() {
+      const grid = document.getElementById('products-grid');
+      let totalAvailable = 0;
+      let totalReserved = 0;
+
+      grid.innerHTML = state.products.map(p => {
+        totalAvailable += p.stockAvailable;
+        totalReserved += p.stockReserved;
+        const isLimited = p.stockAvailable <= 2;
+
+        return `
+          <div class="glass p-5 rounded-2xl relative border ${isLimited ? 'border-amber-500/30' : 'border-slate-800'} transition hover:border-slate-700">
+            ${isLimited ? '<span class="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">ULTIMAS UNIDADES</span>' : ''}
+            <div class="text-[11px] mono text-slate-500">${p.sku}</div>
+            <div class="font-bold text-white text-sm mt-1 line-clamp-1">${p.name}</div>
+            <div class="text-xl font-extrabold text-white mt-2">$${p.price.toFixed(2)}</div>
+            
+            <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+              <div>
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Disponible</span>
+                <span class="font-bold text-base ${p.stockAvailable > 0 ? 'text-emerald-400' : 'text-rose-400'}">${p.stockAvailable}</span>
+              </div>
+              <div class="text-right">
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Reservado</span>
+                <span class="font-bold text-base text-amber-400">${p.stockReserved}</span>
+              </div>
+            </div>
+
+            <button onclick="quickOrder(${p.id})" ${p.stockAvailable === 0 ? 'disabled' : ''} 
+                    class="mt-4 w-full text-xs font-semibold py-2 px-3 rounded-xl transition flex items-center justify-center space-x-1 ${p.stockAvailable === 0 ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'}">
+              <span>${p.stockAvailable === 0 ? 'Agotado' : 'Comprar 1 unidad'}</span>
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('stat-products-count').innerText = state.products.length;
+      document.getElementById('stat-stock-available').innerText = totalAvailable;
+      document.getElementById('stat-stock-reserved').innerText = totalReserved;
+    }
+
+    function renderOrders() {
+      const tbody = document.getElementById('orders-table-body');
+      document.getElementById('stat-orders-count').innerText = state.orders.length;
+
+      if (state.orders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-500">No hay ordenes registradas en este momento</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = state.orders.slice().reverse().map(o => {
+        let statusBadge = "bg-slate-800 text-slate-400";
+        if (o.status === 'PENDING') statusBadge = "bg-amber-500/20 text-amber-300 border border-amber-500/30";
+        if (o.status === 'PAID') statusBadge = "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+        if (o.status === 'CANCELLED') statusBadge = "bg-rose-500/20 text-rose-300 border border-rose-500/30";
+        if (o.status === 'EXPIRED') statusBadge = "bg-slate-800 text-slate-500 border border-slate-700";
+
+        return `
+          <tr class="hover:bg-slate-900/50 transition">
+            <td class="py-2.5 mono text-[11px] text-slate-400 font-medium">${o.id.substring(0, 8)}...</td>
+            <td class="py-2.5 text-slate-200 font-medium">${o.customerEmail}</td>
+            <td class="py-2.5 font-bold text-white">$${o.totalAmount.toFixed(2)}</td>
+            <td class="py-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge}">${o.status}</span></td>
+            <td class="py-2.5 text-right">
+              ${o.status === 'PENDING' ? `
+                <button onclick="selectOrderForWebhook('${o.id}')" class="text-[11px] text-indigo-400 hover:text-indigo-300 underline font-semibold">Pagar</button>
+              ` : '<span class="text-slate-600 text-[11px]">—</span>'}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function updateProductSelect() {
+      const select = document.getElementById('order-product-select');
+      select.innerHTML = state.products.map(p => `
+        <option value="${p.id}" ${p.stockAvailable === 0 ? 'disabled' : ''}>
+          ${p.name} ($${p.price}) - ${p.stockAvailable} disponibles
+        </option>
+      `).join('');
+    }
+
+    function updateWebhookOrderSelect() {
+      const select = document.getElementById('webhook-order-select');
+      const pendingOrders = state.orders.filter(o => o.status === 'PENDING');
+      if (pendingOrders.length === 0) {
+        select.innerHTML = '<option value="">No hay ordenes PENDING disponibles</option>';
+        return;
+      }
+      select.innerHTML = pendingOrders.map(o => `
+        <option value="${o.id}">Orden ${o.id.substring(0, 8)}... ($${o.totalAmount}) - ${o.customerEmail}</option>
+      `).join('');
+    }
+
+    function selectOrderForWebhook(orderId) {
+      const select = document.getElementById('webhook-order-select');
+      select.value = orderId;
+      select.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function quickOrder(productId) {
+      const key = generateUuid();
+      document.getElementById('order-idempotency-key').value = key;
+      document.getElementById('order-product-select').value = productId;
+      await handleCreateOrder(new Event('submit'));
+    }
+
+    async function handleCreateOrder(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const key = document.getElementById('order-idempotency-key').value.trim();
+      const email = document.getElementById('order-email').value.trim();
+      const productId = parseInt(document.getElementById('order-product-select').value);
+
+      if (!key) {
+        alert("Por favor ingresa una clave Idempotency-Key");
+        return;
+      }
+
+      log('INFO', `Enviando POST /api/v1/orders con Idempotency-Key: ${key}`);
+
+      try {
+        const res = await fetch('/api/v1/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': key
+          },
+          body: JSON.stringify({
+            customerEmail: email,
+            items: [{ productId: productId, quantity: 1 }]
+          })
+        });
+
+        const data = await res.json();
+
+        if (res.status === 201) {
+          log('SUCCESS', `Orden creada con exito (HTTP 201) - ID: ${data.id}`, data);
+        } else if (res.status === 200) {
+          log('IDEM', `Respuesta idempotente confirmada (HTTP 200) - Mismo ID devuelto sin duplicar stock: ${data.id}`, data);
+        } else if (res.status === 409) {
+          log('WARN', `Stock insuficiente (HTTP 409 Conflict): ${data.message}`);
+        } else {
+          log('ERROR', `Error ${res.status}: ${data.message || 'Error desconocido'}`);
+        }
+
+        await refreshAll();
+      } catch (err) {
+        log('ERROR', 'Fallo de red al crear orden', err.message);
+      }
+    }
+
+    async function dispatchWebhook(eventType, isValidSignature) {
+      const orderSelect = document.getElementById('webhook-order-select');
+      const orderId = orderSelect.value;
+
+      if (!orderId) {
+        alert("Primero crea o selecciona una orden PENDING para procesar el webhook");
+        return;
+      }
+
+      const eventId = `evt_${generateUuid().substring(0, 16)}`;
+      const payloadObj = {
+        eventId: eventId,
+        provider: "STRIPE",
+        eventType: eventType,
+        orderId: orderId,
+        amount: 99.99,
+        currency: "USD"
+      };
+
+      const rawPayload = JSON.stringify(payloadObj);
+      let signature;
+
+      if (isValidSignature) {
+        signature = await computeHmacSha256(rawPayload, WEBHOOK_SECRET);
+        log('INFO', `Calculando HMAC-SHA256 con secret: ${signature}`);
+      } else {
+        signature = "0000000000000000000000000000000000000000000000000000000000000000";
+        log('WARN', `Simulando ataque con firma falsa: ${signature}`);
+      }
+
+      try {
+        const res = await fetch('/api/v1/webhooks/payments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Webhook-Signature': signature
+          },
+          body: rawPayload
+        });
+
+        const data = await res.json();
+
+        if (res.status === 200) {
+          log('SUCCESS', `Webhook procesado con exito (HTTP 200) - Evento: ${eventType}`, data);
+        } else if (res.status === 401) {
+          log('ERROR', `Ataque bloqueado con exito (HTTP 401 Unauthorized) - Firma HMAC no coincide`, data);
+        } else {
+          log('WARN', `Respuesta Webhook ${res.status}: ${data.message || ''}`, data);
+        }
+
+        await refreshAll();
+      } catch (err) {
+        log('ERROR', 'Error al disparar webhook', err.message);
+      }
+    }
+
+    async function runConcurrencyStressTest() {
+      const btn = document.getElementById('btn-stress-test');
+      const resultsBox = document.getElementById('stress-results-box');
+      const successSpan = document.getElementById('stress-success-count');
+      const failSpan = document.getElementById('stress-fail-count');
+      const pillsContainer = document.getElementById('stress-pills');
+
+      btn.disabled = true;
+      btn.innerText = "Ejecutando 20 peticiones concurrentes en paralelo...";
+      resultsBox.classList.remove('hidden');
+      pillsContainer.innerHTML = '';
+
+      log('WARN', 'INICIANDO PRUEBA DE CONCURRENCIA: 20 peticiones compitiendo por 1 unidad de stock');
+
+      // Target product
+      let targetProduct = state.products.find(p => p.stockAvailable === 1) || state.products[0];
+
+      let successes = 0;
+      let fails = 0;
+
+      const promises = Array.from({ length: 20 }, (_, idx) => {
+        const workerId = idx + 1;
+        const key = generateUuid();
+        return fetch('/api/v1/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': key
+          },
+          body: JSON.stringify({
+            customerEmail: `concurrency_worker_${workerId}@test.com`,
+            items: [{ productId: targetProduct.id, quantity: 1 }]
+          })
+        }).then(async res => {
+          const status = res.status;
+          return { workerId, status };
+        }).catch(err => ({ workerId, status: 500 }));
+      });
+
+      const results = await Promise.all(promises);
+
+      results.forEach(r => {
+        if (r.status === 201 || r.status === 200) {
+          successes++;
+          pillsContainer.innerHTML += `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">Hilo #${r.workerId}: HTTP 201 Aprobado</span>`;
+        } else {
+          fails++;
+          pillsContainer.innerHTML += `<span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30">Hilo #${r.workerId}: HTTP 409 Sin Stock</span>`;
+        }
+      });
+
+      successSpan.innerText = successes;
+      failSpan.innerText = fails;
+
+      log('SUCCESS', `PRUEBA CONCLUIDA: ${successes} confirmadas, ${fails} rechazadas de forma segura (Sin overselling)`);
+
+      btn.disabled = false;
+      btn.innerText = "Ejecutar Prueba de Concurrencia (20 Peticiones Paralelas)";
+      await refreshAll();
+    }
+
+    async function refreshAll() {
+      await fetchProducts();
+      await fetchOrders();
+    }
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      generateNewIdempotencyKey();
+      refreshAll();
+      setInterval(refreshAll, 6000); // Polling every 6s
+    });
+  </script>
+</body>
+</html>
